@@ -1,0 +1,76 @@
+{
+  "name": "react-native-epub-reader",
+  "version": "0.1.0",
+  "description": "A local-first EPUB reader component for React Native.",
+  "license": "MIT",
+  "main": "lib/module/index.js",
+  "module": "lib/module/index.js",
+  "types": "lib/typescript/index.d.ts",
+  "react-native": "src/index",
+  "files": [
+    "src",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "react-native",
+    "epub",
+    "reader",
+    "ebook",
+    "expo"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/react-native-epub-reader.git"
+  },
+  "peerDependencies": {
+    "expo-file-system": ">=17.0.0",
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0",
+    "react-native-webview": ">=11.0.0"
+  },
+  "dependencies": {
+    "epubjs": "^0.3.93"
+  },
+  "devDependencies": {
+    "@react-native/babel-preset": "^0.76.0",
+    "@types/react": "^18.2.0",
+    "expo-file-system": "^57.0.6",
+    "react": "^18.2.0",
+    "react-native": "^0.76.0",
+    "react-native-builder-bob": "^0.35.0",
+    "typescript": "^5.6.0"
+  },
+  "scripts": {
+    "build:runtime": "node scripts/build-epub-runtime.mjs",
+    "build": "npm run build:runtime && bob build",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build",
+    "release": "npm run typecheck && npm run build"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "commonjs",
+        {
+          "esm": false
+        }
+      ],
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.json"
+        }
+      ]
+    ]
+  }
+}
