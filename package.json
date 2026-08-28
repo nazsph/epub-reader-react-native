@@ -22,7 +22,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/react-native-epub-reader.git"
+    "url": "git+https://github.com/nazsph/react-native-epub-reader.git"
   },
   "peerDependencies": {
     "expo-file-system": ">=17.0.0",
