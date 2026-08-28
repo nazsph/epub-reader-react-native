@@ -985,7 +985,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: Platform.OS === "android" ? 34 : 10,
+    paddingBottom: 10,
     gap: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
