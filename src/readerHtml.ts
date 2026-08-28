@@ -19,7 +19,6 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
       height: 100%;
       overflow: hidden;
       background: #fff;
-      touch-action: pan-y;
       -webkit-tap-highlight-color: transparent;
     }
     #viewer {
@@ -28,8 +27,7 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
       left: 0;
       width: 100%;
       height: 100%;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
     }
   </style>
 </head>
@@ -88,6 +86,24 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
       });
     };
 
+    var updateViewerFlowStyles = function (flow) {
+      currentFlow = flow || 'paginated';
+      var v = document.getElementById('viewer');
+      if (!v) return;
+      if (currentFlow === 'scrolled') {
+        v.style.overflowY = 'auto';
+        v.style.overflowX = 'hidden';
+        v.style.webkitOverflowScrolling = 'touch';
+        v.style.touchAction = 'pan-y';
+      } else {
+        v.style.overflow = 'hidden';
+        v.style.overflowX = 'hidden';
+        v.style.overflowY = 'hidden';
+        v.style.webkitOverflowScrolling = 'auto';
+        v.style.touchAction = 'none';
+      }
+    };
+
     var base64ToArrayBuffer = function (base64) {
       var binaryString = window.atob(base64);
       var len = binaryString.length;
@@ -100,7 +116,6 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
 
     var open = function (config) {
       try {
-        console.log('[Reader] open() called, viewer rect:', JSON.stringify(document.getElementById('viewer').getBoundingClientRect()));
         if (!window.ePub) throw new Error('epub.js was not injected into the reader');
         if (rendition) {
           try { rendition.destroy(); } catch (e) {}
@@ -118,7 +133,6 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
           : config.source;
 
         currentFlow = config.flow || 'paginated';
-        console.log('[Reader] Initializing ePub book with flow:', currentFlow);
         book = window.ePub(inputData);
 
         var isScrolled = currentFlow === 'scrolled';
@@ -129,86 +143,102 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
           flow: isScrolled ? 'scrolled-doc' : 'paginated'
         });
 
+        updateViewerFlowStyles(currentFlow);
         applyTheme(config.theme);
 
         window.addEventListener('resize', function () {
           if (rendition) {
-            console.log('[Reader] window resize -> rendition.resize');
             rendition.resize('100%', '100%');
           }
         });
 
         var isTransitioning = false;
+        var touchStartX = 0;
+        var touchStartY = 0;
+        var touchStartTime = 0;
+        var touchStartScrollTop = 0;
 
-        // Register content hook to handle swipe gestures (paginated) & pull-to-transition (scrolled)
+        var onTouchStart = function (e) {
+          if (e.touches && e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+            var v = document.getElementById('viewer');
+            touchStartScrollTop = v ? v.scrollTop : 0;
+          }
+        };
+
+        var onTouchEnd = function (e) {
+          if (isTransitioning) return;
+          if (e.changedTouches && e.changedTouches.length === 1) {
+            var deltaX = e.changedTouches[0].clientX - touchStartX;
+            var deltaY = e.changedTouches[0].clientY - touchStartY;
+            var deltaTime = Date.now() - touchStartTime;
+
+            // Single tap detection (distance < 15px and duration < 350ms)
+            if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && deltaTime < 350) {
+              send('tap', { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY });
+              return;
+            }
+
+            if (currentFlow === 'paginated') {
+              // Stable horizontal swipe: exactly 1 page per swipe
+              if (Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2 && deltaTime < 750) {
+                isTransitioning = true;
+                var p = deltaX < 0 ? rendition.next() : rendition.prev();
+                if (p && p.then) {
+                  p.then(function () {
+                    setTimeout(function () { isTransitioning = false; }, 350);
+                  }).catch(function () {
+                    isTransitioning = false;
+                  });
+                } else {
+                  setTimeout(function () { isTransitioning = false; }, 350);
+                }
+              }
+            } else if (currentFlow === 'scrolled') {
+              var v = document.getElementById('viewer');
+              if (!v) return;
+              var clientHeight = v.clientHeight;
+              var scrollHeight = v.scrollHeight;
+
+              var wasAtBottom = (touchStartScrollTop + clientHeight >= scrollHeight - 30) || (scrollHeight <= clientHeight + 15);
+              var wasAtTop = touchStartScrollTop <= 25;
+              var isIntentionalVerticalPull = Math.abs(deltaY) >= 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.3;
+
+              // Pull UP at bottom -> Next Chapter
+              if (deltaY < 0 && isIntentionalVerticalPull && wasAtBottom) {
+                isTransitioning = true;
+                rendition.next().then(function () {
+                  v.scrollTop = 0;
+                  setTimeout(function () { isTransitioning = false; }, 400);
+                }).catch(function () { isTransitioning = false; });
+              }
+              // Pull DOWN at top -> Prev Chapter
+              else if (deltaY > 0 && isIntentionalVerticalPull && wasAtTop) {
+                isTransitioning = true;
+                rendition.prev().then(function () {
+                  v.scrollTop = v.scrollHeight;
+                  setTimeout(function () { isTransitioning = false; }, 400);
+                }).catch(function () { isTransitioning = false; });
+              }
+            }
+          }
+        };
+
+        // Attach touch listeners to outer viewer
+        var viewerContainer = document.getElementById('viewer');
+        if (viewerContainer) {
+          viewerContainer.addEventListener('touchstart', onTouchStart, { passive: true });
+          viewerContainer.addEventListener('touchend', onTouchEnd, { passive: true });
+        }
+
+        // Register content hook for iframe touches & link handling
         rendition.hooks.content.register(function (contents) {
           if (!contents || !contents.document) return;
 
-          var touchStartX = 0;
-          var touchStartY = 0;
-          var touchStartTime = 0;
-          var touchStartScrollTop = 0;
-
-          contents.document.addEventListener('touchstart', function (e) {
-            if (e.touches && e.touches.length === 1) {
-              touchStartX = e.touches[0].clientX;
-              touchStartY = e.touches[0].clientY;
-              touchStartTime = Date.now();
-              var v = document.getElementById('viewer');
-              touchStartScrollTop = v ? v.scrollTop : 0;
-            }
-          }, { passive: true });
-
-          contents.document.addEventListener('touchend', function (e) {
-            if (e.changedTouches && e.changedTouches.length === 1) {
-              var deltaX = e.changedTouches[0].clientX - touchStartX;
-              var deltaY = e.changedTouches[0].clientY - touchStartY;
-              var deltaTime = Date.now() - touchStartTime;
-
-              if (currentFlow === 'paginated') {
-                // Horizontal swipe in paginated mode (threshold: 50px, predominantly horizontal)
-                if (Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && deltaTime < 600) {
-                  if (deltaX < 0) {
-                    console.log('[Reader] Swipe Left -> next page/chapter');
-                    rendition.next();
-                  } else {
-                    console.log('[Reader] Swipe Right -> prev page/chapter');
-                    rendition.prev();
-                  }
-                }
-              } else if (currentFlow === 'scrolled' && !isTransitioning) {
-                // In scrolled mode, only transition if the user was ALREADY at the boundary
-                // when touch started and performed an intentional pull gesture (>= 65px).
-                var v = document.getElementById('viewer');
-                if (!v) return;
-                var clientHeight = v.clientHeight;
-                var scrollHeight = v.scrollHeight;
-
-                var wasAtBottom = (touchStartScrollTop + clientHeight >= scrollHeight - 30) || (scrollHeight <= clientHeight + 15);
-                var wasAtTop = touchStartScrollTop <= 25;
-                var isIntentionalVerticalPull = Math.abs(deltaY) >= 65 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5;
-
-                // Pull UP at bottom -> Next Chapter
-                if (deltaY < 0 && isIntentionalVerticalPull && wasAtBottom) {
-                  isTransitioning = true;
-                  console.log('[Reader] Intentional pull up at bottom -> next chapter');
-                  rendition.next().then(function () {
-                    v.scrollTop = 0;
-                    setTimeout(function () { isTransitioning = false; }, 500);
-                  }).catch(function () { isTransitioning = false; });
-                }
-                // Pull DOWN at top -> Prev Chapter
-                else if (deltaY > 0 && isIntentionalVerticalPull && wasAtTop) {
-                  isTransitioning = true;
-                  console.log('[Reader] Intentional pull down at top -> prev chapter');
-                  rendition.prev().then(function () {
-                    v.scrollTop = v.scrollHeight;
-                    setTimeout(function () { isTransitioning = false; }, 500);
-                  }).catch(function () { isTransitioning = false; });
-                }
-              }
-            }
-          }, { passive: true });
+          contents.document.addEventListener('touchstart', onTouchStart, { passive: true });
+          contents.document.addEventListener('touchend', onTouchEnd, { passive: true });
 
           // Intercept links inside book content
           contents.document.addEventListener('click', function (event) {
@@ -221,7 +251,6 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
                 if (href.indexOf('://') > -1 || href.indexOf('mailto:') === 0) {
                   send('link', href);
                 } else {
-                  console.log('[Reader] Internal link clicked in content:', href);
                   send('link', href);
                   rendition.display(href).catch(function (err) {
                     console.error('[Reader] display link failed:', href, err);
@@ -232,39 +261,60 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
           }, true);
         });
 
+        var sendCurrentLocation = function (explicitLoc) {
+          var loc = explicitLoc || (rendition && rendition.location && rendition.location.start);
+          if (!loc) return;
+          var pct = typeof loc.percentage === 'number' && !isNaN(loc.percentage) ? loc.percentage : 0;
+          if (book && book.locations && typeof book.locations.percentageFromCfi === 'function' && loc.cfi) {
+            try {
+              var calculatedPct = book.locations.percentageFromCfi(loc.cfi);
+              if (typeof calculatedPct === 'number' && !isNaN(calculatedPct)) {
+                pct = calculatedPct;
+              }
+            } catch (e) {}
+          }
+          send('location', {
+            cfi: loc.cfi,
+            progression: pct,
+            displayed: loc.displayed,
+            href: loc.href,
+            index: loc.index
+          });
+        };
+
         rendition.display(config.initialLocation || undefined).then(function (section) {
-          console.log('[Reader] rendition.display resolved successfully:', section ? section.href : 'ok');
           var viewerEl = document.getElementById('viewer');
-          console.log('[Reader] Viewer DOM children count:', viewerEl ? viewerEl.children.length : 0);
           send('displayed', { href: section ? section.href : '' });
+          sendCurrentLocation();
         }).catch(function (err) {
           console.error('[Reader] display failed:', err);
           send('error', 'display failed: ' + String(err && err.message || err));
         });
 
         rendition.on('rendered', function (section, view) {
-          console.log('[Reader] rendition rendered event for section:', section ? section.href : 'unknown');
         });
 
         book.ready.then(function () {
-          console.log('[Reader] book.ready resolved, title:', book.package.metadata.title);
           send('ready', { title: book.package.metadata.title, creator: book.package.metadata.creator });
+
+          // Generate locations for accurate percentages across all chapters
+          return book.locations.generate(1024);
+        }).then(function (locations) {
+          send('locationsReady', locations ? locations.length : 0);
+          sendCurrentLocation();
         }).catch(function (err) {
-          console.error('[Reader] book.ready failed:', err);
-          send('error', 'book.ready failed: ' + String(err && err.message || err));
+          console.warn('[Reader] locations generation note:', err);
         });
 
         // Send Table of Contents (TOC) to React Native
         book.loaded.navigation.then(function (nav) {
-          console.log('[Reader] navigation loaded, toc count:', nav.toc ? nav.toc.length : 0);
           send('toc', nav.toc || []);
         }).catch(function (err) {
           console.warn('[Reader] book.loaded.navigation failed:', err);
         });
 
         rendition.on('relocated', function (location) {
-          console.log('[Reader] relocated:', JSON.stringify(location.start));
-          send('location', { cfi: location.start.cfi, progression: location.start.percentage, displayed: location.start.displayed });
+          sendCurrentLocation(location.start);
         });
 
         rendition.on('click', function (event) {
@@ -288,14 +338,27 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
       try {
         var msg = JSON.parse(event.data);
         if (!msg || typeof msg !== 'object' || !msg.type) return;
-        console.log('[Reader] received message:', msg.type);
         if (msg.type === 'open') open(msg.payload);
-        if (msg.type === 'goTo' && rendition) rendition.display(msg.payload);
+        if (msg.type === 'goTo' && rendition) {
+          if (typeof msg.payload === 'number' && book && book.locations) {
+            var cfi = book.locations.cfiFromPercentage(msg.payload);
+            if (cfi) rendition.display(cfi);
+            else rendition.display(msg.payload);
+          } else {
+            rendition.display(msg.payload);
+          }
+        }
+        if (msg.type === 'goToPercentage' && rendition && book && book.locations) {
+          var targetCfi = book.locations.cfiFromPercentage(msg.payload);
+          if (targetCfi) rendition.display(targetCfi);
+        }
         if (msg.type === 'next' && rendition) rendition.next();
         if (msg.type === 'prev' && rendition) rendition.prev();
         if (msg.type === 'theme') applyTheme(msg.payload);
         if (msg.type === 'flow' && rendition) {
-          var flowMode = msg.payload === 'scrolled' ? 'scrolled-doc' : 'paginated';
+          currentFlow = msg.payload === 'scrolled' ? 'scrolled' : 'paginated';
+          var flowMode = currentFlow === 'scrolled' ? 'scrolled-doc' : 'paginated';
+          updateViewerFlowStyles(currentFlow);
           rendition.flow(flowMode);
         }
       } catch (e) {
@@ -308,7 +371,6 @@ export const buildReaderHtml = (epubRuntime: string) => `<!doctype html>
       window.dispatchEvent(new MessageEvent('message', { data: event.data }));
     });
 
-    console.log('[Reader] booted, notifying RN');
     send('booted');
   }());
   </script>

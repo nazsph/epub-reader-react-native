@@ -5,6 +5,8 @@ export type EpubLocation = {
   cfi: string;
   progression?: number;
   displayed?: { page: number; total: number };
+  href?: string;
+  index?: number;
 };
 
 export type TocItem = {
@@ -43,8 +45,16 @@ export type ReaderThemeConfig = {
 export type HeaderProps = {
   title: string;
   location: string;
+  currentLocation?: EpubLocation;
   onOpenToc: () => void;
   onOpenSettings: () => void;
+  theme: ReaderThemeConfig;
+};
+
+export type ProgressBarProps = {
+  progression: number;
+  location?: EpubLocation;
+  onSeek: (percentage: number) => void;
   theme: ReaderThemeConfig;
 };
 
@@ -54,12 +64,21 @@ export type EpubReaderProps = {
   initialLocation?: string;
   title?: string;
 
-  /** UI Customization */
+  /** Granular UI Customization (all elements optional) */
   showHeader?: boolean;
+  showTocButton?: boolean;
+  showBookTitle?: boolean;
+  showSettingsButton?: boolean;
   showToc?: boolean;
   showSettings?: boolean;
+  showProgressBar?: boolean;
+
+  /** Custom Render Slots */
   renderHeader?: (props: HeaderProps) => ReactNode;
+  renderHeaderLeft?: (props: HeaderProps) => ReactNode;
+  renderHeaderCenter?: (props: HeaderProps) => ReactNode;
   renderHeaderRight?: (props: HeaderProps) => ReactNode;
+  renderProgressBar?: (props: ProgressBarProps) => ReactNode;
   renderEmpty?: () => ReactNode;
 
   /** Themes & Settings Defaults */
@@ -77,17 +96,21 @@ export type EpubReaderProps = {
 
   /** Callbacks */
   onReady?: (metadata: { title?: string; creator?: string }) => void;
+  onLocationsReady?: (total: number) => void;
   onLocationChange?: (location: EpubLocation) => void;
   onTocChange?: (toc: TocItem[]) => void;
   onThemeChange?: (themeKey: string, theme: EpubTheme) => void;
   onFlowChange?: (flow: EpubFlow) => void;
   onFontSizeChange?: (fontSize: number) => void;
+  onControlsVisibilityChange?: (visible: boolean) => void;
+  onPress?: (event: { x: number; y: number }) => void;
   onError?: (error: Error) => void;
   onLinkPress?: (href: string) => boolean | void;
 };
 
 export type EpubReaderRef = {
-  goTo: (target: string) => void;
+  goTo: (target: string | number) => void;
+  goToPercentage: (percentage: number) => void;
   next: () => void;
   prev: () => void;
   setTheme: (theme: EpubTheme) => void;
@@ -98,4 +121,8 @@ export type EpubReaderRef = {
   closeToc: () => void;
   openSettings: () => void;
   closeSettings: () => void;
+  toggleControls: () => void;
+  setControlsVisible: (visible: boolean) => void;
+  getCurrentLocation: () => EpubLocation | undefined;
+  getToc: () => TocItem[];
 };

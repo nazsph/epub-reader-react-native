@@ -174,7 +174,7 @@ Hide built-in UI components and control navigation programmatically via ref:
 | `showSettings` | `boolean` | `true` | Enable the Reading Settings button (`Aa`) and modal sheet. |
 | `defaultTheme` | `'light' \| 'sepia' \| 'dark' \| string` | `'sepia'` | Initial active theme preset. |
 | `defaultFontSize` | `number` | `18` | Initial font size in pixels. |
-| `defaultFlow` | `'paginated' \| 'scrolled'` | `'paginated'` | Initial reading mode (Swipe vs Continuous Scroll). |
+| `defaultFlow` | `'paginated' \| 'scrolled'` | `'scrolled'` | Initial reading mode (Swipe vs Continuous Scroll). |
 | `customThemes` | `Record<string, ReaderThemeConfig>` | `undefined` | Custom theme definitions with UI colors. |
 | `style` | `StyleProp<ViewStyle>` | `{ flex: 1 }` | Container style (supports fixed `height`, `margin`, `borderRadius`). |
 | `viewerStyle` | `StyleProp<ViewStyle>` | `undefined` | Style applied directly to the reader viewer container. |
