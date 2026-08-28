@@ -1,6 +1,6 @@
 {
   "name": "react-native-epub-reader",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A local-first EPUB reader component for React Native.",
   "license": "MIT",
   "main": "lib/module/index.js",
