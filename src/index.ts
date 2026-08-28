@@ -1,4 +1,4 @@
-export { EpubReader } from './EpubReader';
+export { EpubReader, DEFAULT_THEMES } from './EpubReader';
 export type {
   EpubFlow,
   EpubLocation,
