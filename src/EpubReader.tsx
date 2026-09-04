@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
+import { MaterialIcons } from "@expo/vector-icons";
 import WebView, {
   type WebViewMessageEvent,
   type WebViewProps,
@@ -49,7 +50,7 @@ const ReaderWebView = WebView as unknown as React.ForwardRefExoticComponent<
 export const DEFAULT_THEMES: Record<ThemePreset, ReaderThemeConfig> = {
   light: {
     name: "Açık",
-    icon: "☀️",
+    icon: "wb-sunny",
     theme: {
       background: "#ffffff",
       color: "#111111",
@@ -67,7 +68,7 @@ export const DEFAULT_THEMES: Record<ThemePreset, ReaderThemeConfig> = {
   },
   sepia: {
     name: "Sepya",
-    icon: "📖",
+    icon: "auto-stories",
     theme: {
       background: "#fbf0d9",
       color: "#2e241d",
@@ -85,7 +86,7 @@ export const DEFAULT_THEMES: Record<ThemePreset, ReaderThemeConfig> = {
   },
   dark: {
     name: "Koyu",
-    icon: "🌙",
+    icon: "nightlight-round",
     theme: {
       background: "#141414",
       color: "#e2e2e2",
@@ -499,7 +500,12 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
             style,
           ]}
         >
-          <Text style={styles.emptyIcon}>📚</Text>
+          <MaterialIcons
+            name="auto-stories"
+            size={56}
+            color={ui.subtext}
+            style={{ marginBottom: 8 }}
+          />
           <Text style={[styles.emptyTitle, { color: ui.text }]}>
             Henüz bir kitap seçilmedi
           </Text>
@@ -543,11 +549,7 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
                           { backgroundColor: ui.activeBg },
                         ]}
                       >
-                        <Text
-                          style={[styles.iconButtonText, { color: ui.text }]}
-                        >
-                          ☰
-                        </Text>
+                        <MaterialIcons name="menu" size={20} color={ui.text} />
                       </Pressable>
                     )}
               </View>
@@ -699,11 +701,7 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
                     onPress={() => setIsTocVisible(false)}
                     style={styles.closeButton}
                   >
-                    <Text
-                      style={[styles.closeButtonText, { color: ui.subtext }]}
-                    >
-                      ✕
-                    </Text>
+                    <MaterialIcons name="close" size={20} color={ui.subtext} />
                   </Pressable>
                 </View>
 
@@ -771,11 +769,7 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
                     onPress={() => setIsSettingsVisible(false)}
                     style={styles.closeButton}
                   >
-                    <Text
-                      style={[styles.closeButtonText, { color: ui.subtext }]}
-                    >
-                      ✕
-                    </Text>
+                    <MaterialIcons name="close" size={20} color={ui.subtext} />
                   </Pressable>
                 </View>
 
@@ -835,12 +829,17 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
                             styles.themeOptionBtn,
                             {
                               backgroundColor: t.ui.cardBg,
-                              borderColor: isSelected ? "#ff6e07" : ui.border,
+                              borderColor: isSelected ? ui.text : ui.border,
                             },
                             isSelected && { borderWidth: 2 },
                           ]}
                         >
-                          <Text style={styles.themeOptionIcon}>{t.icon}</Text>
+                          <MaterialIcons
+                            name={t.icon as any}
+                            size={20}
+                            color={t.ui.text}
+                            style={{ marginBottom: 4 }}
+                          />
                           <Text
                             style={[
                               styles.themeOptionText,
@@ -872,12 +871,16 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
                         {
                           backgroundColor: ui.activeBg,
                           borderColor:
-                            activeFlow === "paginated" ? "#ff6e07" : ui.border,
+                            activeFlow === "paginated" ? ui.text : ui.border,
                         },
                         activeFlow === "paginated" && { borderWidth: 2 },
                       ]}
                     >
-                      <Text style={styles.flowOptionIcon}>↔️</Text>
+                      <MaterialIcons
+                        name="swap-horiz"
+                        size={22}
+                        color={ui.text}
+                      />
                       <View>
                         <Text
                           style={[styles.flowOptionTitle, { color: ui.text }]}
@@ -906,12 +909,16 @@ export const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(
                         {
                           backgroundColor: ui.activeBg,
                           borderColor:
-                            activeFlow === "scrolled" ? "#ff6e07" : ui.border,
+                            activeFlow === "scrolled" ? ui.text : ui.border,
                         },
                         activeFlow === "scrolled" && { borderWidth: 2 },
                       ]}
                     >
-                      <Text style={styles.flowOptionIcon}>↕️</Text>
+                      <MaterialIcons
+                        name="swap-vert"
+                        size={22}
+                        color={ui.text}
+                      />
                       <View>
                         <Text
                           style={[styles.flowOptionTitle, { color: ui.text }]}

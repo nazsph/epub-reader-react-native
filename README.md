@@ -226,4 +226,4 @@ reader.current?.closeSettings();             // Close reading settings sheet
 
 ## 📄 License
 
-MIT © [react-native-epub-reader](https://github.com/nazsph/epub-reader-react-native)
+MIT © [react-native-epub-reader](https://github.com/nazsph/react-native-epub-reader)

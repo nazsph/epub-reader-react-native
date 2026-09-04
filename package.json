@@ -25,15 +25,25 @@
     "url": "git+https://github.com/nazsph/react-native-epub-reader.git"
   },
   "peerDependencies": {
+    "@expo/vector-icons": ">=13.0.0",
     "expo-file-system": ">=17.0.0",
     "react": ">=18.0.0",
     "react-native": ">=0.72.0",
     "react-native-webview": ">=11.0.0"
   },
+  "peerDependenciesMeta": {
+    "@expo/vector-icons": {
+      "optional": true
+    }
+  },
   "dependencies": {
-    "epubjs": "^0.3.93"
+    "epubjs": "^0.3.93",
+    "expo": "~57.0.17",
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
   },
   "devDependencies": {
+    "@expo/vector-icons": "^15.1.1",
     "@react-native/babel-preset": "^0.76.0",
     "@types/react": "^18.2.0",
     "expo-file-system": "^57.0.6",
